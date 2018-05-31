@@ -17,7 +17,9 @@ import           Universum
 import           Data.Conduit
 import           Test.QuickCheck
 
-import           InputSelection.Policy (LiftQuickCheck (..))
+import           Cardano.Wallet.Kernel.CoinSelection.Types (ExpenseRegulation (..))
+
+import           InputSelection.Policy (HasTreasuryAddress (..), LiftQuickCheck (..))
 import           Util.Distr
 import           UTxO.DSL
 
@@ -27,7 +29,7 @@ import           UTxO.DSL
 
 data Event h a =
     Deposit (Utxo h a)
-  | Pay [Output a]
+  | Pay ExpenseRegulation [Output a]
   | NextSlot
 
 {-------------------------------------------------------------------------------
@@ -71,7 +73,7 @@ test TestParams{..} = do
 
     forM_ vals $ \n ->
       forM_ ixs $ \_m ->
-        yield $ Pay [Output () n]
+        yield $ Pay SenderPaysFees [Output () n]
   where
     vals :: [Value]
     vals = [testParamsMin, testParamsMin + testParamsIncr .. testParamsMax]
@@ -84,8 +86,11 @@ test TestParams{..} = do
 -------------------------------------------------------------------------------}
 
 -- | It is well-known that the world divides into us versus them.
-data World = Us | Them
+data World = Us | Them | Treasury
   deriving (Eq)
+
+instance HasTreasuryAddress World where
+    treasuryAddr = Treasury
 
 -- | Trivial generator where single deposits drawn from a normal distribution
 -- are followed by single withdrawals from that same distribution.
@@ -107,10 +112,10 @@ data FromDistrParams fDep fPay fNumDep fNumPay =
     , Distribution fNumPay
     ) => FromDistrParams {
       -- | Distribution of deposit values
-      fromDistrDep :: fDep Value
+      fromDistrDep    :: fDep Value
 
       -- | Distribution of payment values
-    , fromDistrPay :: fPay Value
+    , fromDistrPay    :: fPay Value
 
       -- | Distribution of number of deposits
     , fromDistrNumDep :: fNumDep Int
@@ -143,7 +148,7 @@ fromDistr FromDistrParams{..} = do
 
             mkPay :: Gen (Event GivenHash World)
             mkPay =
-                Pay . aux <$> drawFromDistr' fromDistrPay
+                Pay SenderPaysFees . aux <$> drawFromDistr' fromDistrPay
               where
                 aux :: Value -> [Output World]
                 aux val = [Output Them val]
