@@ -73,7 +73,7 @@ test TestParams{..} = do
 
     forM_ vals $ \n ->
       forM_ ixs $ \_m ->
-        yield $ Pay SenderPaysFees [Output () n]
+        yield $ Pay SenderPaysFee [Output () n]
   where
     vals :: [Value]
     vals = [testParamsMin, testParamsMin + testParamsIncr .. testParamsMax]
@@ -148,7 +148,7 @@ fromDistr FromDistrParams{..} = do
 
             mkPay :: Gen (Event GivenHash World)
             mkPay =
-                Pay SenderPaysFees . aux <$> drawFromDistr' fromDistrPay
+                Pay SenderPaysFee . aux <$> drawFromDistr' fromDistrPay
               where
                 aux :: Value -> [Output World]
                 aux val = [Output Them val]
